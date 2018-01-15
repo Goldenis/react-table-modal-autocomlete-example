@@ -1,0 +1,25 @@
+.form-input {
+    display: block;
+    height: 100%;
+    border: 1px solid black;
+    margin-left: 20px;
+}
+
+.form-row {
+    display: flex;
+    margin-top: 10px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: space-between;
+}
+
+.modal-content label {
+    width: 200px;
+}
+
+.button {
+    border: 1px solid black;
+    margin: 5px;
+}

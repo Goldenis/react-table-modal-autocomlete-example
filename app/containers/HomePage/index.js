@@ -2,132 +2,179 @@
  * HomePage
  *
  * This is the first thing users see of our App, at the '/' route
+ *
+ * NOTE: while this component should technically be a stateless functional
+ * component (SFC), hot reloading does not currently support SFCs. If hot
+ * reloading is not a necessity for you then you can refactor it and remove
+ * the linting exception.
  */
-
+import 'react-table/react-table.css';
 import React from 'react';
-import PropTypes from 'prop-types';
-import { Helmet } from 'react-helmet';
-import { FormattedMessage } from 'react-intl';
-import { connect } from 'react-redux';
-import { compose } from 'redux';
-import { createStructuredSelector } from 'reselect';
+import ReactTable from 'react-table';
+import Modal from 'react-modal';
+import Autocomplete from 'react-autocomplete';
 
-import injectReducer from 'utils/injectReducer';
-import injectSaga from 'utils/injectSaga';
-import { makeSelectRepos, makeSelectLoading, makeSelectError } from 'containers/App/selectors';
-import H2 from 'components/H2';
-import ReposList from 'components/ReposList';
-import AtPrefix from './AtPrefix';
-import CenteredSection from './CenteredSection';
-import Form from './Form';
-import Input from './Input';
-import Section from './Section';
-import messages from './messages';
-import { loadRepos } from '../App/actions';
-import { changeUsername } from './actions';
-import { makeSelectUsername } from './selectors';
-import reducer from './reducer';
-import saga from './saga';
+import './style.css';
 
-export class HomePage extends React.PureComponent { // eslint-disable-line react/prefer-stateless-function
-  /**
-   * when initial state username is not null, submit the form to load repos
-   */
-  componentDidMount() {
-    if (this.props.username && this.props.username.trim().length > 0) {
-      this.props.onSubmitForm();
-    }
+export default class HomePage extends React.PureComponent { // eslint-disable-line react/prefer-stateless-function
+  constructor() {
+    super();
+
+    this.state = {
+      data: [],
+      items: [],
+      modalIsOpen: false,
+      searchValue: '',
+    };
   }
 
+  closeModal = () => {
+    this.setState({ modalIsOpen: false });
+  }
+
+  addEntry = () => {
+    const { data } = this.state;
+    const entry = {
+      firstName: this.firstName.value,
+      lastName: this.lastName.value,
+      birth: this.birth.value,
+      phone: this.phone.value,
+    };
+    this.setState({
+      data: [entry, ...data],
+      modalIsOpen: false,
+    });
+    this.searchItems([entry, ...data], this.state.searchValue);
+  }
+
+  openEntryModal = () => {
+    this.setState({
+      modalIsOpen: true,
+    });
+  }
+
+  searchItems = (data, value) => {
+    const results = data.filter((item) => item.phone.indexOf(value) !== -1);
+    this.setState({ items: results });
+  }
+
+  handleChange = (value) => {
+    this.setState({ searchValue: value });
+    this.searchItems(this.state.data, value);
+  };
+
   render() {
-    const { loading, error, repos } = this.props;
-    const reposListProps = {
-      loading,
-      error,
-      repos,
+    const columns = [{
+      Header: 'First Name',
+      accessor: 'firstName',
+    }, {
+      Header: 'Last Name',
+      accessor: 'lastName',
+    }, {
+      Header: 'Date of birth',
+      accessor: 'birth',
+    }, {
+      Header: 'Phone number',
+      accessor: 'phone',
+    }];
+
+    const customStyles = {
+      overlay: {
+        zIndex: 2,
+      },
+      content: {
+        maxWidth: '500px',
+        margin: 'auto',
+      },
     };
 
+    const { modalIsOpen, data, searchValue, items } = this.state;
     return (
-      <article>
-        <Helmet>
-          <title>Home Page</title>
-          <meta name="description" content="A React.js Boilerplate application homepage" />
-        </Helmet>
+      <div>
+        <button className="button" onClick={this.openEntryModal}>Add</button>
+        <Autocomplete
+          getItemValue={(item) => item.phone}
+          items={data}
+          menuStyle={{
+            borderRadius: '3px',
+            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.1)',
+            background: 'rgba(255, 255, 255, 0.9)',
+            padding: '2px 0',
+            fontSize: '90%',
+            position: 'fixed',
+            overflow: 'auto',
+            maxHeight: '50%', // TODO: don't cheat, let it flow to the bottom
+            zIndex: 999,
+          }}
+          inputProps={{
+            placeholder: 'Search for phone number',
+          }}
+          renderItem={(item, isHighlighted) => (
+            <div style={{ background: isHighlighted ? 'lightgray' : 'white' }}>
+              {item.phone}
+            </div>
+          )}
+          value={searchValue}
+          onChange={(e) => this.handleChange(e.target.value)}
+          onSelect={this.handleChange}
+        />
         <div>
-          <CenteredSection>
-            <H2>
-              <FormattedMessage {...messages.startProjectHeader} />
-            </H2>
-            <p>
-              <FormattedMessage {...messages.startProjectMessage} />
-            </p>
-          </CenteredSection>
-          <Section>
-            <H2>
-              <FormattedMessage {...messages.trymeHeader} />
-            </H2>
-            <Form onSubmit={this.props.onSubmitForm}>
-              <label htmlFor="username">
-                <FormattedMessage {...messages.trymeMessage} />
-                <AtPrefix>
-                  <FormattedMessage {...messages.trymeAtPrefix} />
-                </AtPrefix>
-                <Input
-                  id="username"
+          <Modal
+            ariaHideApp={false}
+            isOpen={modalIsOpen}
+            contentLabel="Modal"
+            onRequestClose={this.closeModal}
+            style={customStyles}
+          >
+            <div className="modal-actions">
+              <button className="button" onClick={this.addEntry}>Add</button>
+              <button onClick={this.closeModal}>x</button>
+            </div>
+            <form className="modal-content">
+              <div className="form-row">
+                <label htmlFor="firstName">First Name</label>
+                <input
+                  id="firstName"
+                  className="form-input"
                   type="text"
-                  placeholder="mxstbr"
-                  value={this.props.username}
-                  onChange={this.props.onChangeUsername}
+                  ref={(c) => (this.firstName = c)}
                 />
-              </label>
-            </Form>
-            <ReposList {...reposListProps} />
-          </Section>
+              </div>
+              <div className="form-row">
+                <label htmlFor="lastName">Last Name</label>
+                <input
+                  id="lastName"
+                  className="form-input"
+                  type="text"
+                  ref={(c) => (this.lastName = c)}
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="dateOfBirth">Date of Birth</label>
+                <input
+                  id="dateOfBirth"
+                  className="form-input"
+                  type="text"
+                  ref={(c) => (this.birth = c)}
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="phone">Phone Number</label>
+                <input
+                  id="phone"
+                  className="form-input"
+                  type="text"
+                  ref={(c) => (this.phone = c)}
+                />
+              </div>
+            </form>
+          </Modal>
         </div>
-      </article>
+        <ReactTable
+          data={items}
+          columns={columns}
+        />
+      </div>
     );
   }
 }
-
-HomePage.propTypes = {
-  loading: PropTypes.bool,
-  error: PropTypes.oneOfType([
-    PropTypes.object,
-    PropTypes.bool,
-  ]),
-  repos: PropTypes.oneOfType([
-    PropTypes.array,
-    PropTypes.bool,
-  ]),
-  onSubmitForm: PropTypes.func,
-  username: PropTypes.string,
-  onChangeUsername: PropTypes.func,
-};
-
-export function mapDispatchToProps(dispatch) {
-  return {
-    onChangeUsername: (evt) => dispatch(changeUsername(evt.target.value)),
-    onSubmitForm: (evt) => {
-      if (evt !== undefined && evt.preventDefault) evt.preventDefault();
-      dispatch(loadRepos());
-    },
-  };
-}
-
-const mapStateToProps = createStructuredSelector({
-  repos: makeSelectRepos(),
-  username: makeSelectUsername(),
-  loading: makeSelectLoading(),
-  error: makeSelectError(),
-});
-
-const withConnect = connect(mapStateToProps, mapDispatchToProps);
-
-const withReducer = injectReducer({ key: 'home', reducer });
-const withSaga = injectSaga({ key: 'home', saga });
-
-export default compose(
-  withReducer,
-  withSaga,
-  withConnect,
-)(HomePage);
